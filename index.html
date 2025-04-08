@@ -71,7 +71,7 @@ packageVersion("sf")
         
         <h3>Step 2: Creating a Basic Map with Point Data</h3>
         <div class="r-code">
-            <code>
+            <pre><code>
 # Load sample malaria data with coordinates (lat/long)
 # In practice, you would load your actual data
 malaria_points <- read.csv("malaria_coordinates.csv")
@@ -105,7 +105,7 @@ ggplot() +
     caption = "Data source: WHO Malaria Report"
   ) +
   theme_minimal()
-            </code>
+            </code></pre>
         </div>
         
         <div class="explanation">
@@ -178,7 +178,7 @@ ggplot() +
         
         <h3>Step 4: Creating a Heatmap or Density Map</h3>
         <div class="r-code">
-            <code>
+            <pre><code>
 # Install the spatstat package for spatial statistics
 install.packages("spatstat")
 library(spatstat)
@@ -217,7 +217,7 @@ ggplot() +
     caption = "Data source: WHO Malaria Report 2023"
   ) +
   theme_minimal()
-            </code>
+            </code></pre>
         </div>
         
         <div class="explanation">
