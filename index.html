@@ -1,0 +1,772 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Week 7: Geospatial Analysis with R</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <button class="sidebar-toggle" id="sidebar-toggle">Menu</button>
+    
+    <div class="sidebar" id="sidebar">
+        <h3>Course Navigation</h3>
+        <ul>
+            <li class="menu-item">
+                <a href="#week7">📅 Week 7: Geospatial Analysis</a>
+                <ul class="sub-menu">
+                    <li><a href="#mapping">Mapping Malaria Cases</a></li>
+                    <li><a href="#shapefiles">Reading Shapefiles</a></li>
+                    <li><a href="#choropleth">Choropleth Maps</a></li>
+                </ul>
+            </li>
+        </ul>
+    </div>
+    
+    <div class="container">
+        <h1 id="week7">📅 Week 7: Geospatial Analysis with R</h1>
+        
+        <p>This week, we will:<br>
+        ✅ <strong>Map malaria cases</strong> using <code>sf</code> & <code>ggplot2</code><br>
+        ✅ <strong>Read and process shapefiles</strong> with <code>sf::st_read()</code><br>
+        ✅ <strong>Create choropleth maps</strong> using <code>tmap</code> and <code>ggplot2</code></p>
+        
+        <hr>
+        
+        <h2 id="mapping">1️⃣ Mapping Malaria Cases with sf & ggplot2</h2>
+        
+        <h3>Why Use Geospatial Analysis?</h3>
+        <p>📌 <strong>Geospatial analysis</strong> allows us to visualize the spatial distribution of malaria cases, identify hotspots, and understand geographic patterns that may not be apparent in tabular data.</p>
+        
+        <h3>Step 1: Setting Up the Environment</h3>
+        <div class="r-code">
+            <code>
+# Install required packages if not already installed
+install.packages(c("sf", "ggplot2", "dplyr", "rnaturalearth", "rnaturalearthdata"))
+
+# Load the packages
+library(sf)          # For handling spatial data
+library(ggplot2)     # For visualization
+library(dplyr)       # For data manipulation
+library(rnaturalearth)  # For country boundary data
+library(rnaturalearthdata)  # Additional data for rnaturalearth
+
+# Set working directory (optional)
+# setwd("your/working/directory")
+
+# Let's check the version of sf to ensure compatibility
+packageVersion("sf")
+            </code>
+        </div>
+        
+        <div class="explanation">
+            <h4>🔍 Explanation:</h4>
+            <p>✔ <code>sf</code> (Simple Features) is a modern R package for handling spatial data<br>
+            ✔ <code>rnaturalearth</code> provides country and region boundary data<br>
+            ✔ These packages allow us to handle both malaria data and geographic boundaries<br>
+            ✔ Checking package versions helps avoid compatibility issues</p>
+        </div>
+        
+        <hr>
+        
+        <h3>Step 2: Creating a Basic Map with Point Data</h3>
+        <div class="r-code">
+            <code>
+# Load sample malaria data with coordinates (lat/long)
+# In practice, you would load your actual data
+malaria_points <- read.csv("malaria_coordinates.csv")
+
+# Preview the data
+head(malaria_points)
+
+# Convert to sf object for spatial operations
+malaria_sf <- st_as_sf(malaria_points, 
+                      coords = c("longitude", "latitude"), 
+                      crs = 4326)  # WGS84 coordinate system
+
+# Get country boundaries for background map
+countries <- ne_countries(scale = "medium", returnclass = "sf")
+
+# Create a basic map of malaria cases
+ggplot() +
+  # Add country boundaries
+  geom_sf(data = countries, fill = "lightgray", color = "white") +
+  # Add malaria points
+  geom_sf(data = malaria_sf, aes(color = cases, size = cases), alpha = 0.7) +
+  # Color and size legends
+  scale_color_viridis_c(name = "Malaria Cases") +
+  scale_size_continuous(name = "Malaria Cases", range = c(1, 5)) +
+  # Map extent - focus on a region, e.g., Africa
+  coord_sf(xlim = c(-20, 50), ylim = c(-35, 35), expand = FALSE) +
+  # Add labels and title
+  labs(
+    title = "Spatial Distribution of Malaria Cases",
+    subtitle = "Point data showing case numbers by location",
+    caption = "Data source: WHO Malaria Report"
+  ) +
+  theme_minimal()
+            </code>
+        </div>
+        
+        <div class="explanation">
+            <h4>🔍 Explanation:</h4>
+            <p>✔ <code>st_as_sf()</code> converts regular data to spatial features<br>
+            ✔ <code>coords = c("longitude", "latitude")</code> specifies which columns contain coordinates<br>
+            ✔ <code>crs = 4326</code> sets the coordinate reference system to WGS84 (standard for GPS data)<br>
+            ✔ <code>geom_sf()</code> is ggplot2's function for plotting spatial features<br>
+            ✔ We use color and size aesthetics to show the number of cases at each location</p>
+        </div>
+        
+        <hr>
+        
+        <h3>Step 3: Customizing Malaria Maps</h3>
+        <div class="r-code">
+            <code>
+# Create a more informative malaria map
+ggplot() +
+  # Add country boundaries
+  geom_sf(data = countries, fill = "white", color = "gray70") +
+  # Add malaria points with tooltip-like labels
+  geom_sf(data = malaria_sf, aes(color = cases, size = cases), alpha = 0.7) +
+  # Add place labels for orientation
+  geom_text(data = malaria_points, 
+            aes(x = longitude, y = latitude, label = location),
+            size = 3, nudge_y = 0.5, check_overlap = TRUE) +
+  # Custom color scale for malaria prevalence
+  scale_color_gradientn(
+    colors = c("green", "yellow", "orange", "red", "darkred"),
+    name = "Malaria Cases",
+    breaks = c(10, 50, 100, 500, 1000),
+    trans = "log10"
+  ) +
+  scale_size_continuous(name = "Malaria Cases", range = c(1, 8), trans = "log10") +
+  # Focus on a specific region if needed
+  coord_sf(xlim = c(-20, 50), ylim = c(-35, 35), expand = FALSE) +
+  # Facet by year if time-series data is available
+  # facet_wrap(~year, ncol = 2) +
+  # Add informative labels
+  labs(
+    title = "Malaria Case Distribution",
+    subtitle = "Size and color indicate number of cases",
+    caption = "Data source: WHO Malaria Report 2023",
+    x = "Longitude",
+    y = "Latitude"
+  ) +
+  # Custom theme with minimal background elements
+  theme_minimal() +
+  theme(
+    panel.grid.major = element_line(color = "gray90"),
+    panel.grid.minor = element_line(color = "gray95"),
+    legend.position = "right",
+    plot.title = element_text(size = 16, face = "bold"),
+    plot.subtitle = element_text(size = 12)
+  )
+            </code>
+        </div>
+        
+        <div class="explanation">
+            <h4>🔍 Explanation:</h4>
+            <p>✔ <code>geom_text()</code> adds location labels to the map<br>
+            ✔ <code>check_overlap = TRUE</code> prevents label crowding<br>
+            ✔ <code>scale_color_gradientn()</code> creates a custom color gradient for cases<br>
+            ✔ <code>trans = "log10"</code> uses a log scale, useful when case numbers vary widely<br>
+            ✔ <code>facet_wrap()</code> can be used to create small multiples by year or other variables<br>
+            ✔ Custom theme elements improve map readability</p>
+        </div>
+        
+        <hr>
+        
+        <h3>Step 4: Creating a Heatmap or Density Map</h3>
+        <div class="r-code">
+            <code>
+# Install the spatstat package for spatial statistics
+install.packages("spatstat")
+library(spatstat)
+library(raster)
+
+# Convert sf to spatial points for density analysis
+malaria_sp <- as(malaria_sf, "Spatial")
+malaria_ppp <- as(malaria_sp, "ppp")
+
+# Create a density map
+density_map <- density(malaria_ppp, sigma = 1)  # Adjust sigma for smoothing
+
+# Convert to raster for plotting with ggplot2
+density_raster <- raster(density_map)
+density_df <- as.data.frame(density_raster, xy = TRUE)
+
+# Plot the density map
+ggplot() +
+  # Add country boundaries
+  geom_sf(data = countries, fill = "white", color = "gray70") +
+  # Add density raster
+  geom_tile(data = density_df, aes(x = x, y = y, fill = layer)) +
+  # Custom color scale for density
+  scale_fill_viridis_c(
+    name = "Case Density",
+    option = "inferno",
+    direction = -1,
+    alpha = 0.8
+  ) +
+  # Focus on a specific region
+  coord_sf(xlim = c(-20, 50), ylim = c(-35, 35), expand = FALSE) +
+  # Add informative labels
+  labs(
+    title = "Malaria Case Density Map",
+    subtitle = "Hotspots of malaria transmission",
+    caption = "Data source: WHO Malaria Report 2023"
+  ) +
+  theme_minimal()
+            </code>
+        </div>
+        
+        <div class="explanation">
+            <h4>🔍 Explanation:</h4>
+            <p>✔ <code>density()</code> creates a kernel density estimate from point data<br>
+            ✔ <code>sigma</code> controls the smoothing bandwidth (higher = smoother)<br>
+            ✔ We convert between spatial data formats to leverage different packages' capabilities<br>
+            ✔ <code>geom_tile()</code> plots the density as a continuous surface<br>
+            ✔ This approach helps identify hotspots where cases are clustered</p>
+        </div>
+        
+        <hr>
+        
+        <h2 id="shapefiles">2️⃣ Reading Shapefiles</h2>
+        
+        <h3>Step 1: Understanding Shapefiles</h3>
+        <div class="r-code">
+            <code>
+# Shapefile components explanation
+# .shp: geometric features
+# .dbf: attribute data
+# .shx: index file for shapes
+# .prj: projection information
+
+# Reading a shapefile with sf
+admin_boundaries <- st_read("admin_boundaries.shp")
+
+# Examine the shapefile structure
+print(admin_boundaries)
+head(admin_boundaries)
+
+# Plot the shapefile to verify it loaded correctly
+plot(st_geometry(admin_boundaries))
+
+# Check the coordinate reference system (CRS)
+st_crs(admin_boundaries)
+
+# Transform to a different CRS if needed (e.g., to WGS84)
+admin_boundaries_wgs84 <- st_transform(admin_boundaries, 4326)
+            </code>
+        </div>
+        
+        <div class="explanation">
+            <h4>🔍 Explanation:</h4>
+            <p>✔ Shapefiles are a common format for storing geographic data<br>
+            ✔ <code>st_read()</code> loads shapefiles into R as sf objects<br>
+            ✔ <code>st_geometry()</code> extracts just the geometric component<br>
+            ✔ <code>st_crs()</code> checks the coordinate reference system<br>
+            ✔ <code>st_transform()</code> converts between different coordinate systems<br>
+            ✔ WGS84 (EPSG:4326) is a standard CRS for global mapping</p>
+        </div>
+        
+        <hr>
+        
+        <h3>Step 2: Examining Shapefile Attributes</h3>
+        <div class="r-code">
+            <code>
+# View attributes associated with shapefile
+names(admin_boundaries)
+
+# Examine a specific attribute
+table(admin_boundaries$ADMIN_LEVEL)
+
+# Basic statistics for a numeric attribute
+summary(admin_boundaries$POPULATION)
+
+# Select specific columns and filter regions
+malaria_regions <- admin_boundaries %>%
+  select(REGION_NAME, POPULATION, AREA_KM2, geometry) %>%
+  filter(REGION_NAME %in% c("Region1", "Region2", "Region3"))
+
+# Simplify complex geometries for faster plotting (if needed)
+admin_simplified <- st_simplify(admin_boundaries, dTolerance = 0.01)
+
+# Compare geometry complexity
+object.size(admin_boundaries)
+object.size(admin_simplified)
+            </code>
+        </div>
+        
+        <div class="explanation">
+            <h4>🔍 Explanation:</h4>
+            <p>✔ Shapefiles contain both geometric data and attribute data<br>
+            ✔ We can use dplyr functions like <code>select()</code> and <code>filter()</code> with sf objects<br>
+            ✔ <code>st_simplify()</code> reduces the complexity of geometries<br>
+            ✔ <code>dTolerance</code> controls how much simplification to apply<br>
+            ✔ Simplifying geometries can significantly improve performance for complex maps</p>
+        </div>
+        
+        <hr>
+        
+        <h3>Step 3: Joining Malaria Data with Shapefiles</h3>
+        <div class="r-code">
+            <code>
+# Load tabular malaria data
+malaria_data <- read.csv("malaria_by_region.csv")
+
+# Inspect the malaria data
+head(malaria_data)
+
+# Join malaria data with shapefile
+# Make sure the joining column names match exactly
+malaria_map_data <- admin_boundaries %>%
+  left_join(malaria_data, by = c("REGION_ID" = "region_id"))
+
+# Check if the join worked correctly
+head(malaria_map_data)
+
+# Verify that data is properly joined by plotting a sample attribute
+plot(malaria_map_data["malaria_cases"], main = "Malaria Cases by Region")
+
+# Calculate incidence rate per 1000 people
+malaria_map_data <- malaria_map_data %>%
+  mutate(
+    incidence_per_1000 = (malaria_cases / POPULATION) * 1000,
+    # Create categories for mapping
+    incidence_category = cut(
+      incidence_per_1000,
+      breaks = c(0, 1, 5, 10, 50, 100, Inf),
+      labels = c("Very Low", "Low", "Moderate", "High", "Very High", "Extreme")
+    )
+  )
+            </code>
+        </div>
+        
+        <div class="explanation">
+            <h4>🔍 Explanation:</h4>
+            <p>✔ <code>left_join()</code> combines the shapefile with tabular malaria data<br>
+            ✔ The <code>by</code> parameter specifies which columns to join on<br>
+            ✔ <code>mutate()</code> calculates new variables like incidence rates<br>
+            ✔ <code>cut()</code> creates categorical variables for easier mapping<br>
+            ✔ Incidence rates standardize case counts by population size</p>
+        </div>
+        
+        <hr>
+        
+        <h3>Step 4: Working with Multiple Shapefiles</h3>
+        <div class="r-code">
+            <code>
+# Load multiple administrative levels
+admin1 <- st_read("admin1_boundaries.shp")  # Provinces/states
+admin2 <- st_read("admin2_boundaries.shp")  # Districts/counties
+
+# Load health facility locations
+health_facilities <- st_read("health_facilities.shp")
+
+# Create a layered map
+ggplot() +
+  # Base layer: Admin1 boundaries
+  geom_sf(data = admin1, fill = NA, color = "black", size = 1) +
+  # Admin2 boundaries
+  geom_sf(data = admin2, fill = NA, color = "gray", size = 0.5) +
+  # Health facilities
+  geom_sf(data = health_facilities, aes(color = FACILITY_TYPE), size = 3) +
+  # Add labels for admin1 regions
+  geom_sf_text(data = admin1, aes(label = NAME), size = 3, check_overlap = TRUE) +
+  # Custom legend
+  scale_color_brewer(name = "Facility Type", palette = "Set1") +
+  # Add title and caption
+  labs(
+    title = "Health Facilities and Administrative Boundaries",
+    subtitle = "Multiple shapefile layers combined",
+    caption = "Data source: Ministry of Health"
+  ) +
+  theme_minimal()
+
+# Find which admin regions contain which facilities (spatial join)
+facilities_by_region <- st_join(health_facilities, admin1)
+
+# Summarize facilities by region
+facility_counts <- facilities_by_region %>%
+  group_by(REGION_NAME) %>%
+  summarize(
+    total_facilities = n(),
+    hospitals = sum(FACILITY_TYPE == "Hospital"),
+    clinics = sum(FACILITY_TYPE == "Clinic"),
+    .groups = "drop"
+  )
+
+print(facility_counts)
+            </code>
+        </div>
+        
+        <div class="explanation">
+            <h4>🔍 Explanation:</h4>
+            <p>✔ Multiple shapefiles can be layered to create comprehensive maps<br>
+            ✔ <code>geom_sf_text()</code> adds labels to areas on the map<br>
+            ✔ <code>st_join()</code> performs a spatial join between different geometries<br>
+            ✔ Spatial joins find which points fall within which polygons<br>
+            ✔ We can then summarize data to count facilities by region</p>
+        </div>
+        
+        <hr>
+        
+        <h2 id="choropleth">3️⃣ Creating Choropleth Maps</h2>
+        
+        <h3>Step 1: Basic Choropleth Map with ggplot2</h3>
+        <div class="r-code">
+            <code>
+# Create a basic choropleth map of malaria incidence
+ggplot(data = malaria_map_data) +
+  # Fill regions by incidence rate
+  geom_sf(aes(fill = incidence_per_1000)) +
+  # Add borders in white
+  geom_sf(fill = NA, color = "white", size = 0.2) +
+  # Custom color scale
+  scale_fill_viridis_c(
+    name = "Incidence per 1000",
+    option = "plasma",
+    direction = -1,
+    trans = "sqrt"  # Square root transform to better show differences
+  ) +
+  # Add title and labels
+  labs(
+    title = "Malaria Incidence Rate by Region",
+    subtitle = "Cases per 1000 population",
+    caption = "Data source: Ministry of Health, 2023"
+  ) +
+  # Minimal theme for maps
+  theme_minimal() +
+  theme(
+    legend.position = "right",
+    plot.title = element_text(size = 16, face = "bold"),
+    axis.text = element_text(size = 8)
+  )
+            </code>
+        </div>
+        
+        <div class="explanation">
+            <h4>🔍 Explanation:</h4>
+            <p>✔ A choropleth map uses color to represent data values across regions<br>
+            ✔ <code>geom_sf(aes(fill = ...))</code> colors regions based on data values<br>
+            ✔ <code>scale_fill_viridis_c()</code> uses colorblind-friendly color schemes<br>
+            ✔ <code>trans = "sqrt"</code> applies a square root transformation to highlight differences in lower values<br>
+            ✔ White borders help distinguish between adjacent regions</p>
+        </div>
+        
+        <hr>
+        
+        <h3>Step 2: Advanced Choropleth Maps with tmap</h3>
+        <div class="r-code">
+            <code>
+# Install and load the tmap package
+install.packages("tmap")
+library(tmap)
+
+# Set tmap mode to plot (static) or view (interactive)
+tmap_mode("plot")  # For static maps
+# tmap_mode("view")  # For interactive maps
+
+# Create a basic choropleth map with tmap
+tm_shape(malaria_map_data) +
+  tm_fill("incidence_per_1000", 
+          title = "Incidence per 1000",
+          palette = "YlOrRd",
+          style = "jenks",  # Natural breaks classification
+          n = 6) +  # Number of classes
+  tm_borders(col = "white", lwd = 0.5) +
+  tm_layout(
+    title = "Malaria Incidence Rate Map",
+    title.position = c("center", "top"),
+    legend.outside = TRUE,
+    legend.outside.position = "right",
+    frame = FALSE
+  )
+
+# Create a more complex map with multiple variables
+tm_shape(malaria_map_data) +
+  tm_fill("incidence_category", 
+          title = "Incidence Level",
+          palette = "YlOrRd",
+          alpha = 0.7) +
+  tm_borders(col = "white", lwd = 0.5) +
+  # Add circle markers showing total cases
+  tm_shape(st_centroid(malaria_map_data)) +
+  tm_bubbles(
+    size = "malaria_cases",
+    col = "blue",
+    alpha = 0.6,
+    scale = 2,
+    title.size = "Total Cases",
+    id = "REGION_NAME"  # For interactive tooltips
+  ) +
+  # Add text labels for high-incidence areas
+  tm_text("REGION_NAME", 
+          size = 0.7, 
+          col = "black",
+          just = "center",
+          fontface = "bold",
+          auto.placement = TRUE,
+          remove.overlap = TRUE) +
+  # Layout and styling
+  tm_layout(
+    title = "Malaria Burden by Region",
+    title.size = 1.5,
+    legend.outside = TRUE,
+    legend.outside.position = "right",
+    frame = FALSE
+  ) +
+  tm_compass(position = c("left", "bottom")) +
+  tm_scale_bar(position = c("left", "bottom"))
+            </code>
+        </div>
+        
+        <div class="explanation">
+            <h4>🔍 Explanation:</h4>
+            <p>✔ <code>tmap</code> is specialized for thematic mapping with a layered approach<br>
+            ✔ <code>tm_shape()</code> defines the spatial data to be mapped<br>
+            ✔ <code>tm_fill()</code> creates the choropleth coloring<br>
+            ✔ <code>style = "jenks"</code> uses natural breaks to classify the data<br>
+            ✔ <code>tm_bubbles()</code> adds proportional symbols on the map<br>
+            ✔ <code>tmap_mode("view")</code> creates interactive maps with zoom and pan capabilities</p>
+        </div>
+        
+        <hr>
+        
+        <h3>Step 3: Creating a Map Series with Faceting</h3>
+        <div class="r-code">
+            <code>
+# Assume we have malaria data for multiple years
+malaria_multi_year <- read.csv("malaria_by_region_years.csv")
+
+# Join with shapefile
+malaria_map_timeseries <- admin_boundaries %>%
+  left_join(malaria_multi_year, by = c("REGION_ID" = "region_id"))
+
+# Using ggplot2 for faceted maps
+ggplot(data = malaria_map_timeseries) +
+  geom_sf(aes(fill = incidence_per_1000)) +
+  geom_sf(fill = NA, color = "white", size = 0.1) +
+  scale_fill_viridis_c(option = "plasma", direction = -1, name = "Incidence per 1000") +
+  facet_wrap(~year, ncol = 2) +
+  labs(
+    title = "Malaria Incidence Over Time",
+    subtitle = "Changes in spatial distribution (2018-2022)",
+    caption = "Data source: Ministry of Health"
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text = element_blank(),
+    legend.position = "right"
+  )
+
+# Using tmap for faceted maps
+tm_shape(malaria_map_timeseries) +
+  tm_fill("incidence_per_1000", 
+          palette = "YlOrRd",
+          style = "fisher",
+          title = "Incidence per 1000") +
+  tm_borders(col = "white", lwd = 0.2) +
+  tm_facets(by = "year", ncol = 2, free.scales = FALSE) +
+  tm_layout(
+    title = "Malaria Incidence (2018-2022)",
+    legend.outside = TRUE,
+    panel.labels = c("2018", "2019", "2020", "2021", "2022"),
+    panel.label.size = 1.2,
+    frame = FALSE
+  )
+            </code>
+        </div>
+        
+        <div class="explanation">
+            <h4>🔍 Explanation:</h4>
+            <p>✔ Faceted maps show how spatial patterns change over time or across categories<br>
+            ✔ <code>facet_wrap(~year)</code> in ggplot2 creates a series of maps by year<br>
+            ✔ <code>tm_facets()</code> in tmap provides similar functionality<br>
+            ✔ <code>free.scales = FALSE</code> ensures the same color scale is used across all maps<br>
+            ✔ This approach helps visualize temporal trends in spatial distribution</p>
+        </div>
+        
+        <hr>
+        
+        <h3>Step 4: Creating Publication-Ready Maps</h3>
+        <div class="r-code">
+            <code>
+# Install additional packages for high-quality maps
+install.packages(c("cowplot", "ggspatial", "extrafont"))
+library(cowplot)
+library(ggspatial)
+library(extrafont)
+
+# Create a publication-quality malaria map
+main_map <- ggplot(data = malaria_map_data) +
+  # Base layer: fill by incidence
+  geom_sf(aes(fill = incidence_per_1000), color = "white", size = 0.2) +
+  # Use a carefully designed color palette
+  scale_fill_gradientn(
+    colors = c("#ffffcc", "#ffeda0", "#fed976", "#feb24c", "#fd8d3c", "#fc4e2a", "#e31a1c", "#bd0026", "#800026"),
+    name = "Incidence\nper 1000",
+    breaks = c(0, 10, 20, 50, 100, 200),
+    labels = c("0", "10", "20", "50", "100", "200+"),
+    limits = c(0, 200),
+    guide = guide_colorbar(
+      direction = "vertical",
+      barwidth = 1,
+      barheight = 15,
+      title.position = "top"
+    )
+  ) +
+  # Add administrative boundaries
+  geom_sf(data = admin1, fill = NA, color = "gray30", size = 0.5) +
+  # Add health facilities
+  geom_sf(data = health_facilities, aes(shape = FACILITY_TYPE), size = 2, color = "blue", alpha = 0.7) +
+  # Scale bar and north arrow
+  annotation_scale(location = "bl", width_hint = 0.25) +
+  annotation_north_arrow(
+    location = "tl",
+    which_north = "true",
+    style = north_arrow_fancy_orienteering
+  ) +
+  # Customize the map appearance
+  theme_minimal() +
+  theme(
+    plot.title = element_text(size = 16, face = "bold"),
+    plot.subtitle = element_text(size = 12),
+    legend.title = element_text(size = 10, face = "bold"),
+    legend.text = element_text(size = 9),
+    legend.position = "right",
+    plot.caption = element_text(size = 8, hjust = 0),
+    panel.grid.major = element_line(color = "transparent")
+  ) +
+  # Add informative title and captions
+  labs(
+    title = "Malaria Incidence in Endemic Regions",
+    subtitle = "Cases per 1000 population, with health facility locations",
+    caption = "Data sources: Ministry of Health (2023), WHO Global Malaria Program (2022)"
+  )
+
+# Create an inset map showing location in broader context
+world <- ne_countries(scale = "medium", returnclass = "sf")
+inset_map <- ggplot() +
+  geom_sf(data = world, fill = "lightgray", color = "white", size = 0.1) +
+  geom_sf(data = admin_boundaries, fill = "red", color = NA, alpha = 0.7) +
+  coord_sf(xlim = c(-20, 55), ylim = c(-40, 40)) +
+  theme_void() +
+  theme(panel.border = element_rect(color = "black", fill = NA))
+
+# Combine main map and inset
+final_map <- ggdraw() +
+  draw_plot(main_map) +
+  draw_plot(inset_map, x = 0.75, y = 0.05, width = 0.25, height = 0.25)
+
+# Save the map as a high-resolution image
+ggsave("malaria_incidence_map.png", final_map, width = 10, height = 8, dpi = 300)
+            </code>
+        </div>
+        
+        <div class="explanation">
+            <h4>🔍 Explanation:</h4>
+            <p>✔ Publication-ready maps combine multiple elements: main map, inset, scale bar, north arrow<br>
+            ✔ <code>annotation_scale()</code> and <code>annotation_north_arrow()</code> add essential cartographic elements<br>
+            ✔ <code>cowplot</code> helps combine multiple plots into a single figure<br>
+            ✔ <code>draw_plot()</code> positions the inset map relative to the main map<br>
+            ✔ <code>ggsave()</code> with high DPI creates images suitable for publication</p>
+        </div>
+        
+        <hr>
+        
+        <h3>Step 5: Interactive Maps with tmap and leaflet</h3>
+        <div class="r-code">
+            <code>
+# Create an interactive map with tmap
+tmap_mode("view")  # Switch to interactive mode
+
+interactive_map <- tm_shape(malaria_map_data) +
+  tm_fill("incidence_per_1000", 
+          title = "Incidence per 1000",
+          palette = "YlOrRd",
+          style = "jenks",
+          popup.vars = c("Region" = "REGION_NAME", 
+                        "Population" = "POPULATION",
+                        "Cases" = "malaria_cases",
+                        "Incidence" = "incidence_per_1000")) +
+  tm_borders(col = "white", lwd = 0.5) +
+  # Add health facilities
+  tm_shape(health_facilities) +
+  tm_dots(col = "FACILITY_TYPE", 
+          size = 0.1,
+          title = "Facility Type",
+          popup.vars = c("Name" = "FACILITY_NAME", 
+                        "Type" = "FACILITY_TYPE",
+                        "Beds" = "BEDS")) +
+  tm_layout(title = "Interactive Malaria Map")
+
+# Display the interactive map
+interactive_map
+
+# Save as an HTML file for sharing
+tmap_save(interactive_map, "interactive_malaria_map.html")
+
+# Alternative using leaflet directly
+library(leaflet)
+
+leaflet(malaria_map_data) %>%
+  addTiles() %>%  # Add base map tiles
+  addPolygons(
+    fillColor = ~colorQuantile("YlOrRd", incidence_per_1000)(incidence_per_1000),
+    fillOpacity = 0.7,
+    weight = 1,
+    color = "white",
+    popup = ~paste(
+      "<strong>Region:</strong> ", REGION_NAME, "<br>",
+      "<strong>Population:</strong> ", format(POPULATION, big.mark = ","), "<br>",
+      "<strong>Malaria Cases:</strong> ", format(malaria_cases, big.mark = ","), "<br>",
+      "<strong>Incidence per 1000:</strong> ", round(incidence_per_1000, 1)
+    )
+  ) %>%
+  addCircleMarkers(
+    data = health_facilities,
+    radius = 5,
+    color = "blue",
+    fillOpacity = 0.8,
+    popup = ~paste(
+      "<strong>Facility:</strong> ", FACILITY_NAME, "<br>",
+      "<strong>Type:</strong> ", FACILITY_TYPE
+    )
+  ) %>%
+  addLegend(
+    position = "bottomright",
+    pal = colorQuantile("YlOrRd", malaria_map_data$incidence_per_1000),
+    values = malaria_map_data$incidence_per_1000,
+    title = "Incidence per 1000",
+    opacity = 0.7
+  )
+            </code>
+        </div>
+        
+        <div class="explanation">
+            <h4>🔍 Explanation:</h4>
+            <p>✔ Interactive maps allow users to zoom, pan, and click for more information<br>
+            ✔ <code>tmap_mode("view")</code> switches tmap to interactive mode<br>
+            ✔ <code>popup.vars</code> defines which variables appear in tooltips<br>
+            ✔ <code>leaflet</code> provides another powerful framework for interactive mapping<br>
+            ✔ Interactive maps can be saved as HTML files for sharing via web</p>
+        </div>
+        
+        <hr>
+        
+        <h2>✅ Summary of Week 7</h2>
+        <p>By the end of this week, you should be able to:<br>
+        ✔ <strong>Load and process shapefiles</strong> with <code>sf</code><br>
+        ✔ <strong>Create static maps</strong> of malaria data with <code>ggplot2</code><br>
+        ✔ <strong>Generate choropleth maps</strong> with <code>tmap</code> and <code>ggplot2</code><br>
+        ✔ <strong>Combine multiple spatial datasets</strong> for comprehensive analysis<br>
+        ✔ <strong>Create both static and interactive maps</strong> for different purposes</p>
+        
+        <p>Remember that effective spatial visualization can reveal patterns in malaria transmission that are not apparent in tabular data, helping to target interventions more effectively.</p>
+    </div>
+    
+    <script src="script.js"></script>
+</body>
+</html>
