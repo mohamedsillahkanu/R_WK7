@@ -235,7 +235,7 @@ ggplot() +
         
         <h3>Step 1: Understanding Shapefiles</h3>
         <div class="r-code">
-            <code>
+            <pre><code>
 # Shapefile components explanation
 # .shp: geometric features
 # .dbf: attribute data
@@ -257,7 +257,7 @@ st_crs(admin_boundaries)
 
 # Transform to a different CRS if needed (e.g., to WGS84)
 admin_boundaries_wgs84 <- st_transform(admin_boundaries, 4326)
-            </code>
+            </code></pre>
         </div>
         
         <div class="explanation">
@@ -274,7 +274,7 @@ admin_boundaries_wgs84 <- st_transform(admin_boundaries, 4326)
         
         <h3>Step 2: Examining Shapefile Attributes</h3>
         <div class="r-code">
-            <code>
+            <pre><code>
 # View attributes associated with shapefile
 names(admin_boundaries)
 
@@ -295,7 +295,7 @@ admin_simplified <- st_simplify(admin_boundaries, dTolerance = 0.01)
 # Compare geometry complexity
 object.size(admin_boundaries)
 object.size(admin_simplified)
-            </code>
+            </code></pre>
         </div>
         
         <div class="explanation">
@@ -311,7 +311,7 @@ object.size(admin_simplified)
         
         <h3>Step 3: Joining Malaria Data with Shapefiles</h3>
         <div class="r-code">
-            <code>
+            <pre><code>
 # Load tabular malaria data
 malaria_data <- read.csv("malaria_by_region.csv")
 
@@ -340,7 +340,7 @@ malaria_map_data <- malaria_map_data %>%
       labels = c("Very Low", "Low", "Moderate", "High", "Very High", "Extreme")
     )
   )
-            </code>
+            </code></pre>
         </div>
         
         <div class="explanation">
@@ -356,7 +356,7 @@ malaria_map_data <- malaria_map_data %>%
         
         <h3>Step 4: Working with Multiple Shapefiles</h3>
         <div class="r-code">
-            <code>
+            <pre><code>
 # Load multiple administrative levels
 admin1 <- st_read("admin1_boundaries.shp")  # Provinces/states
 admin2 <- st_read("admin2_boundaries.shp")  # Districts/counties
@@ -398,7 +398,7 @@ facility_counts <- facilities_by_region %>%
   )
 
 print(facility_counts)
-            </code>
+            </code></pre>
         </div>
         
         <div class="explanation">
@@ -416,7 +416,7 @@ print(facility_counts)
         
         <h3>Step 1: Basic Choropleth Map with ggplot2</h3>
         <div class="r-code">
-            <code>
+            <pre><code>
 # Create a basic choropleth map of malaria incidence
 ggplot(data = malaria_map_data) +
   # Fill regions by incidence rate
@@ -443,7 +443,7 @@ ggplot(data = malaria_map_data) +
     plot.title = element_text(size = 16, face = "bold"),
     axis.text = element_text(size = 8)
   )
-            </code>
+            </code></pre>
         </div>
         
         <div class="explanation">
@@ -459,7 +459,7 @@ ggplot(data = malaria_map_data) +
         
         <h3>Step 2: Advanced Choropleth Maps with tmap</h3>
         <div class="r-code">
-            <code>
+            <pre><code>
 # Install and load the tmap package
 install.packages("tmap")
 library(tmap)
@@ -519,7 +519,7 @@ tm_shape(malaria_map_data) +
   ) +
   tm_compass(position = c("left", "bottom")) +
   tm_scale_bar(position = c("left", "bottom"))
-            </code>
+            </code></pre>
         </div>
         
         <div class="explanation">
@@ -536,7 +536,7 @@ tm_shape(malaria_map_data) +
         
         <h3>Step 3: Creating a Map Series with Faceting</h3>
         <div class="r-code">
-            <code>
+            <pre><code>
 # Assume we have malaria data for multiple years
 malaria_multi_year <- read.csv("malaria_by_region_years.csv")
 
@@ -576,7 +576,7 @@ tm_shape(malaria_map_timeseries) +
     panel.label.size = 1.2,
     frame = FALSE
   )
-            </code>
+            </code></pre>
         </div>
         
         <div class="explanation">
@@ -592,7 +592,7 @@ tm_shape(malaria_map_timeseries) +
         
         <h3>Step 4: Creating Publication-Ready Maps</h3>
         <div class="r-code">
-            <code>
+            <pre><code>
 # Install additional packages for high-quality maps
 install.packages(c("cowplot", "ggspatial", "extrafont"))
 library(cowplot)
@@ -662,7 +662,7 @@ final_map <- ggdraw() +
 
 # Save the map as a high-resolution image
 ggsave("malaria_incidence_map.png", final_map, width = 10, height = 8, dpi = 300)
-            </code>
+            </code></pre>
         </div>
         
         <div class="explanation">
@@ -678,7 +678,7 @@ ggsave("malaria_incidence_map.png", final_map, width = 10, height = 8, dpi = 300
         
         <h3>Step 5: Interactive Maps with tmap and leaflet</h3>
         <div class="r-code">
-            <code>
+            <pre><code>
 # Create an interactive map with tmap
 tmap_mode("view")  # Switch to interactive mode
 
@@ -742,7 +742,7 @@ leaflet(malaria_map_data) %>%
     title = "Incidence per 1000",
     opacity = 0.7
   )
-            </code>
+            </code></pre>
         </div>
         
         <div class="explanation">
